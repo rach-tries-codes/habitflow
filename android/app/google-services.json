@@ -12,7 +12,20 @@
           "package_name": "com.example.habitflow"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1078132301789-d74tpbiedmui6hd6jm8vhesu86q7an48.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.habitflow",
+            "certificate_hash": "28d2679fc74fb45179a3abe4e27c8c82d12a8187"
+          }
+        },
+        {
+          "client_id": "1078132301789-nfueupqa22041r4010raamsdivc4ljo2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyA3qCZ05UrtFm6wPt7dlkzkETAD6GN_MqY"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1078132301789-nfueupqa22041r4010raamsdivc4ljo2.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1078132301789-3bsebb5gi2laf30csakbtnl12snsqgmb.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.habitflow"
+              }
+            }
+          ]
         }
       }
     }

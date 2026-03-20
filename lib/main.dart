@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'core/theme.dart';
 import 'features/home_screen.dart';
 import 'features/journal_screen.dart';
+import 'features/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,7 +26,25 @@ class HabitFlowApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
-      home: const MainNav(),
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          // Still loading
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          }
+          // User is logged in
+          if (snapshot.hasData) {
+            return const MainNav();
+          }
+          // User is not logged in
+          return const LoginScreen();
+        },
+      ),
     );
   }
 }
@@ -41,7 +61,7 @@ class _MainNavState extends State<MainNav> {
 
   final List<Widget> _screens = const [
     HomeScreen(),
-    const JournalScreen(),
+    JournalScreen(),
     Scaffold(body: Center(child: Text('Stats 📊'))),
     Scaffold(body: Center(child: Text('Profile 👤'))),
   ];
@@ -78,10 +98,18 @@ class _MainNavState extends State<MainNav> {
           selectedFontSize: 11,
           unselectedFontSize: 11,
           items: const [
-            BottomNavigationBarItem(icon: Text('🏠', style: TextStyle(fontSize: 20)), label: 'Home'),
-            BottomNavigationBarItem(icon: Text('📓', style: TextStyle(fontSize: 20)), label: 'Journal'),
-            BottomNavigationBarItem(icon: Text('📊', style: TextStyle(fontSize: 20)), label: 'Stats'),
-            BottomNavigationBarItem(icon: Text('👤', style: TextStyle(fontSize: 20)), label: 'Profile'),
+            BottomNavigationBarItem(
+                icon: Text('🏠', style: TextStyle(fontSize: 20)),
+                label: 'Home'),
+            BottomNavigationBarItem(
+                icon: Text('📓', style: TextStyle(fontSize: 20)),
+                label: 'Journal'),
+            BottomNavigationBarItem(
+                icon: Text('📊', style: TextStyle(fontSize: 20)),
+                label: 'Stats'),
+            BottomNavigationBarItem(
+                icon: Text('👤', style: TextStyle(fontSize: 20)),
+                label: 'Profile'),
           ],
         ),
       ),
