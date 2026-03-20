@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AddHabitScreen extends StatefulWidget {
   const AddHabitScreen({super.key});
@@ -216,12 +217,14 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
     }
 
     try {
+      final user = FirebaseAuth.instance.currentUser;
       await FirebaseFirestore.instance.collection('habits').add({
         'name': _nameController.text.trim(),
         'emoji': _selectedEmoji,
         'frequency': _selectedFrequency,
         'createdAt': FieldValue.serverTimestamp(),
         'streak': 0,
+        'userId': user?.uid,
       });
 
       if (mounted) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/theme.dart';
 import 'add_habit_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -43,9 +44,10 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
-                        .collection('habits')
-                        .orderBy('createdAt', descending: false)
-                        .snapshots(),
+                      .collection('habits')
+                      .where('userId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+                      .orderBy('createdAt', descending: false)
+                      .snapshots(),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(
