@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'core/theme.dart';
 import 'features/home_screen.dart';
+import 'features/journal_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,7 +41,7 @@ class _MainNavState extends State<MainNav> {
 
   final List<Widget> _screens = const [
     HomeScreen(),
-    Scaffold(body: Center(child: Text('Journal 📓'))),
+    const JournalScreen(),
     Scaffold(body: Center(child: Text('Stats 📊'))),
     Scaffold(body: Center(child: Text('Profile 👤'))),
   ];
