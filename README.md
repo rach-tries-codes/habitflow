@@ -1,17 +1,42 @@
-# habitflow
+# 🌱 HabitFlow
 
-A new Flutter project.
+A smart daily habit tracker and journal app built with Flutter, Firebase, and Gemini AI.
 
-## Getting Started
+## ✨ Features
 
-This project is a starting point for a Flutter application.
+### Free
+- Track up to 5 daily habits
+- Streak counter
+- Daily journal with mood tracking
+- Push notifications / reminders
 
-A few resources to get you started if this is your first Flutter project:
+### Premium
+- Unlimited habits
+- AI-powered weekly insights
+- Mood pattern analysis
+- AI journaling prompts
+- Habit coaching
+- Data export (PDF / CSV)
+- Custom themes
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## 🛠️ Tech Stack
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Flutter (Dart) |
+| Backend | Firebase (Firestore, Auth, Functions) |
+| AI | Gemini API |
+| Notifications | Firebase Cloud Messaging |
+| Monetization | RevenueCat |
+
+## 📱 Screenshots
+*Coming soon*
+
+## 🏗️ Architecture
+*Coming soon*
+
+## 🚀 Getting Started
+*Coming soon*
+
+## 👩‍💻 Author
+Rachita — [github.com/rach-tries-codes](https://github.com/rach-tries-codes)
