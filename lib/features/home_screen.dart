@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/theme.dart';
 import 'add_habit_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -40,26 +41,49 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   _SectionLabel(label: "Today's Habits", isDark: isDark),
                   const SizedBox(height: 8),
-                  _HabitItem(
-                    emoji: '🧘',
-                    name: 'Morning meditation',
-                    streak: '🔥 12 days',
-                    done: true,
-                    isDark: isDark,
-                  ),
-                  _HabitItem(
-                    emoji: '📚',
-                    name: 'Read 20 pages',
-                    streak: '🔥 5 days',
-                    done: true,
-                    isDark: isDark,
-                  ),
-                  _HabitItem(
-                    emoji: '💧',
-                    name: 'Drink 8 glasses',
-                    streak: '3 days',
-                    done: false,
-                    isDark: isDark,
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('habits')
+                        .orderBy('createdAt', descending: false)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      }
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return Center(
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 40),
+                              const Text('🌱', style: TextStyle(fontSize: 48)),
+                              const SizedBox(height: 12),
+                              Text(
+                                'No habits yet!\nTap + to add your first habit.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: isDark ? AppTheme.darkTextMid : AppTheme.textLight,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      return Column(
+                        children: snapshot.data!.docs.map((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          return _HabitItem(
+                            emoji: data['emoji'] ?? '🌱',
+                            name: data['name'] ?? '',
+                            streak: '${data['streak'] ?? 0} days',
+                            done: false,
+                            isDark: isDark,
+                          );
+                        }).toList(),
+                      );
+                    },
                   ),
                 ],
               ),
