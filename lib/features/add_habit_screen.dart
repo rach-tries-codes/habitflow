@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/theme.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AddHabitScreen extends StatefulWidget {
   const AddHabitScreen({super.key});
@@ -41,6 +42,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
           color: isDark ? AppTheme.darkText : AppTheme.moss,
         ),
       ),
+      
       body: Stack(
         children: [
           // Same nature background
@@ -205,22 +207,37 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
     );
   }
 
-  void _saveHabit() {
+  Future<void> _saveHabit() async {
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a habit name!')),
       );
       return;
     }
-    // We'll connect to Firestore next!
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-            '${_selectedEmoji} ${_nameController.text} saved!'),
-        backgroundColor: AppTheme.sage,
-      ),
-    );
-    Navigator.pop(context);
+
+    try {
+      await FirebaseFirestore.instance.collection('habits').add({
+        'name': _nameController.text.trim(),
+        'emoji': _selectedEmoji,
+        'frequency': _selectedFrequency,
+        'createdAt': FieldValue.serverTimestamp(),
+        'streak': 0,
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$_selectedEmoji ${_nameController.text} saved!'),
+            backgroundColor: AppTheme.sage,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error saving habit: $e')),
+      );
+    }
   }
 }
 
