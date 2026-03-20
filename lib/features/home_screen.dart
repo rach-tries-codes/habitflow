@@ -75,11 +75,12 @@ class HomeScreen extends StatelessWidget {
                         children: snapshot.data!.docs.map((doc) {
                           final data = doc.data() as Map<String, dynamic>;
                           return _HabitItem(
-                            emoji: data['emoji'] ?? '🌱',
-                            name: data['name'] ?? '',
-                            streak: '${data['streak'] ?? 0} days',
-                            done: false,
-                            isDark: isDark,
+                              emoji: data['emoji'] ?? '🌱',
+                              name: data['name'] ?? '',
+                              streak: '${data['streak'] ?? 0} days',
+                              done: data['done'] ?? false,
+                              isDark: isDark,
+                              docId: doc.id,
                           );
                         }).toList(),
                       );
@@ -323,14 +324,23 @@ class _SectionLabel extends StatelessWidget {
 
 // ── Habit item ──
 class _HabitItem extends StatelessWidget {
-  final String emoji, name, streak;
+  final String emoji, name, streak, docId;
   final bool done, isDark;
-  const _HabitItem(
-      {required this.emoji,
-      required this.name,
-      required this.streak,
-      required this.done,
-      required this.isDark});
+  const _HabitItem({
+    required this.emoji,
+    required this.name,
+    required this.streak,
+    required this.done,
+    required this.isDark,
+    required this.docId,
+  });
+
+  Future<void> _toggleDone(BuildContext context) async {
+    await FirebaseFirestore.instance
+        .collection('habits')
+        .doc(docId)
+        .update({'done': !done});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -374,6 +384,7 @@ class _HabitItem extends StatelessWidget {
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: isDark ? AppTheme.darkText : AppTheme.textDark,
+                    decoration: done ? TextDecoration.lineThrough : null,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -387,23 +398,27 @@ class _HabitItem extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: done ? AppTheme.sage : Colors.transparent,
-              border: done
-                  ? null
-                  : Border.all(
-                      color: isDark
-                          ? const Color(0xFF3A6040)
-                          : AppTheme.sageLight,
-                    ),
+          GestureDetector(
+            onTap: () => _toggleDone(context),
+            child: Container(
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: done ? AppTheme.sage : Colors.transparent,
+                border: done
+                    ? null
+                    : Border.all(
+                        color: isDark
+                            ? const Color(0xFF3A6040)
+                            : AppTheme.sageLight,
+                        width: 1.5,
+                      ),
+              ),
+              child: done
+                  ? const Icon(Icons.check, color: Colors.white, size: 14)
+                  : null,
             ),
-            child: done
-                ? const Icon(Icons.check, color: Colors.white, size: 14)
-                : null,
           ),
         ],
       ),
