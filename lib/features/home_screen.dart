@@ -3,14 +3,53 @@ import '../core/theme.dart';
 import 'add_habit_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/gemini_service.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  String _weeklyInsight = 'Loading your weekly insight...';
+  final GeminiService _geminiService = GeminiService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWeeklyInsight();
+  }
+
+  Future<void> _loadWeeklyInsight() async {
+    final user = FirebaseAuth.instance.currentUser;
+    final snapshot = await FirebaseFirestore.instance
+        .collection('habits')
+        .where('userId', isEqualTo: user?.uid)
+        .get();
+
+    final total = snapshot.docs.length;
+    final completed = snapshot.docs
+        .where((doc) => doc.data()['done'] == true)
+        .length;
+
+    if (total == 0) {
+      setState(() => _weeklyInsight = 'Add some habits to get your weekly insight! 🌱');
+      return;
+    }
+
+    final insight = await _geminiService.generateWeeklyInsight(
+      completedHabits: completed,
+      totalHabits: total,
+      topMood: '😊',
+    );
+    setState(() => _weeklyInsight = insight);
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -40,6 +79,50 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   _StreakRow(isDark: isDark),
                   const SizedBox(height: 16),
+                  // Weekly AI Insight card
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppTheme.sage.withOpacity(0.13),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppTheme.sage.withOpacity(0.25),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('✨', style: TextStyle(fontSize: 20)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'WEEKLY INSIGHT · AI',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.9,
+                                  color: AppTheme.sage,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _weeklyInsight,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: isDark ? AppTheme.darkText : AppTheme.textDark,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   _SectionLabel(label: "Today's Habits", isDark: isDark),
                   const SizedBox(height: 8),
                   StreamBuilder<QuerySnapshot>(
