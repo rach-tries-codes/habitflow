@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../core/theme.dart';
 import '../services/auth_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -170,6 +171,51 @@ class ProfileScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+                  // Legal links
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF1E301E).withOpacity(0.75)
+                          : Colors.white.withOpacity(0.72),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: isDark
+                            ? const Color(0xFF4A7040).withOpacity(0.25)
+                            : const Color(0xFFB4D4A0).withOpacity(0.35),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'LEGAL',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.9,
+                            color: isDark ? AppTheme.darkTextMid : AppTheme.textLight,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _LegalLink(
+                          icon: '🔒',
+                          label: 'Privacy Policy',
+                          url: 'https://doc-hosting.flycricket.io/habitflow-privacy-policy/c7a185ad-1ddf-4427-8601-e2110fbd6be4/privacy',
+                          isDark: isDark,
+                        ),
+                        const SizedBox(height: 8),
+                        _LegalLink(
+                          icon: '📋',
+                          label: 'Terms of Use',
+                          url: 'https://doc-hosting.flycricket.io/habitflow-terms-of-use/7946cd7c-c7f2-4c86-97cd-32280c0432ce/terms',
+                          isDark: isDark,
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 32),
                   // Sign out button
                   SizedBox(
@@ -305,4 +351,49 @@ class _ProfileBgPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ProfileBgPainter old) => old.isDark != isDark;
+
+
+}
+
+class _LegalLink extends StatelessWidget {
+  final String icon, label, url;
+  final bool isDark;
+  const _LegalLink({
+    required this.icon,
+    required this.label,
+    required this.url,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () async {
+        final uri = Uri.parse(url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      },
+      child: Row(
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 18)),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: isDark ? AppTheme.darkText : AppTheme.textDark,
+            ),
+          ),
+          const Spacer(),
+          Icon(
+            Icons.arrow_forward_ios,
+            size: 14,
+            color: isDark ? AppTheme.darkTextMid : AppTheme.textLight,
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -39,6 +39,7 @@ dependencies:
   flutter_dotenv: ^5.1.0
   google_mobile_ads: ^4.0.0
   flutter_native_splash: ^2.3.10
+  url_launcher: ^6.2.5
 
 dev_dependencies:
   flutter_test:
