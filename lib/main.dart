@@ -8,9 +8,11 @@ import 'features/journal_screen.dart';
 import 'features/login_screen.dart';
 import 'features/profile_screen.dart';
 import 'features/stats_screen.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
