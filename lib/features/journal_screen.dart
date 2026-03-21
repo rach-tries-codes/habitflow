@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/gemini_service.dart';
 
 class JournalScreen extends StatefulWidget {
   const JournalScreen({super.key});
@@ -14,6 +15,8 @@ class _JournalScreenState extends State<JournalScreen> {
   final _entryController = TextEditingController();
   String _selectedMood = '😊';
   bool _isSaving = false;
+  String _aiPrompt = 'Loading your personalised prompt...';
+  final GeminiService _geminiService = GeminiService();
 
   final List<Map<String, String>> _moods = [
     {'emoji': '😔', 'label': 'Low'},
@@ -21,12 +24,37 @@ class _JournalScreenState extends State<JournalScreen> {
     {'emoji': '😊', 'label': 'Good'},
     {'emoji': '🤩', 'label': 'Great'},
   ];
+  @override
+  void initState() {
+    super.initState();
+    _loadAiPrompt();
+  }
+
+  Future<void> _loadAiPrompt() async {
+    final user = FirebaseAuth.instance.currentUser;
+    final snapshot = await FirebaseFirestore.instance
+        .collection('habits')
+        .where('userId', isEqualTo: user?.uid)
+        .get();
+
+    final habitNames = snapshot.docs
+        .map((doc) => doc.data()['name'] as String)
+        .toList();
+
+    if (habitNames.isEmpty) {
+      setState(() => _aiPrompt = 'What are you grateful for today?');
+      return;
+    }
+
+    final prompt = await _geminiService.generateJournalPrompt(habitNames);
+    setState(() => _aiPrompt = prompt);
+  }
 
   String get _todayKey {
     final now = DateTime.now();
     return '${now.year}-${now.month}-${now.day}';
   }
-
+  
   Future<void> _saveEntry() async {
     if (_entryController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -179,6 +207,50 @@ class _JournalScreenState extends State<JournalScreen> {
                   const SizedBox(height: 16),
 
                   // Journal entry
+                  // AI Prompt card
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppTheme.sage.withOpacity(0.13),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppTheme.sage.withOpacity(0.25),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('✨', style: TextStyle(fontSize: 20)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'AI PROMPT · PREMIUM',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.9,
+                                  color: AppTheme.sage,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _aiPrompt,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: isDark ? AppTheme.darkText : AppTheme.textDark,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   _SectionLabel("Today's Entry", isDark: isDark),
                   const SizedBox(height: 8),
                   Container(
