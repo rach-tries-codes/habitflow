@@ -6,6 +6,7 @@ import 'core/theme.dart';
 import 'features/home_screen.dart';
 import 'features/journal_screen.dart';
 import 'features/login_screen.dart';
+import 'features/profile_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,7 +64,7 @@ class _MainNavState extends State<MainNav> {
     HomeScreen(),
     JournalScreen(),
     Scaffold(body: Center(child: Text('Stats 📊'))),
-    Scaffold(body: Center(child: Text('Profile 👤'))),
+    const ProfileScreen(),
   ];
 
   @override
