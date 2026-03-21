@@ -4,6 +4,7 @@ import 'add_habit_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/gemini_service.dart';
+import '../services/auth_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,6 +21,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadWeeklyInsight();
+    _resetHabitsIfNewDay();
+  }
+
+  Future<void> _resetHabitsIfNewDay() async {
+    final authService = AuthService();
+    await authService.resetHabitsIfNewDay();
   }
 
   Future<void> _loadWeeklyInsight() async {
