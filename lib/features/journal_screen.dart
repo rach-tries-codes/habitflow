@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/theme.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class JournalScreen extends StatefulWidget {
   const JournalScreen({super.key});
@@ -37,13 +38,15 @@ class _JournalScreenState extends State<JournalScreen> {
     setState(() => _isSaving = true);
 
     try {
+      final user = FirebaseAuth.instance.currentUser;
       await FirebaseFirestore.instance
           .collection('journal')
-          .doc(_todayKey)
+          .doc('${user?.uid}_$_todayKey')
           .set({
         'entry': _entryController.text.trim(),
         'mood': _selectedMood,
         'date': _todayKey,
+        'userId': user?.uid,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -218,10 +221,11 @@ class _JournalScreenState extends State<JournalScreen> {
                   const SizedBox(height: 8),
                   StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
-                        .collection('journal')
-                        .orderBy('createdAt', descending: true)
-                        .limit(5)
-                        .snapshots(),
+                    .collection('journal')
+                    .where('userId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+                    .orderBy('createdAt', descending: true)
+                    .limit(5)
+                    .snapshots(),
                     builder: (context, snapshot) {
                       if (!snapshot.hasData ||
                           snapshot.data!.docs.isEmpty) {
