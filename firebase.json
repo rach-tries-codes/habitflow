@@ -1,1 +1,25 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"habitflow-c2c79","appId":"1:1078132301789:android:f4018115c2e055f4cda034","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"habitflow-c2c79","configurations":{"android":"1:1078132301789:android:f4018115c2e055f4cda034"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "habitflow-c2c79",
+          "appId": "1:1078132301789:android:f4018115c2e055f4cda034",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "habitflow-c2c79",
+          "configurations": {
+            "android": "1:1078132301789:android:f4018115c2e055f4cda034"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}
