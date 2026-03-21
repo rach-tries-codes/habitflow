@@ -159,13 +159,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       return Column(
                         children: snapshot.data!.docs.map((doc) {
                           final data = doc.data() as Map<String, dynamic>;
+                          final streak = data['streak'] ?? 0;
+                          final streakText = streak > 0 ? '🔥 $streak days' : 'Start your streak!';
+
                           return _HabitItem(
-                              emoji: data['emoji'] ?? '🌱',
-                              name: data['name'] ?? '',
-                              streak: '${data['streak'] ?? 0} days',
-                              done: data['done'] ?? false,
-                              isDark: isDark,
-                              docId: doc.id,
+                            emoji: data['emoji'] ?? '🌱',
+                            name: data['name'] ?? '',
+                            streak: streakText,
+                            done: data['done'] ?? false,
+                            isDark: isDark,
+                            docId: doc.id,
                           );
                         }).toList(),
                       );
@@ -421,14 +424,66 @@ class _HabitItem extends StatelessWidget {
   });
 
   Future<void> _toggleDone(BuildContext context) async {
-    await FirebaseFirestore.instance
+  try {
+    final now = DateTime.now();
+    final today =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+    final docRef = FirebaseFirestore.instance
         .collection('habits')
-        .doc(docId)
-        .update({'done': !done});
+        .doc(docId);
+
+    final doc = await docRef.get();
+    final data = doc.data() as Map<String, dynamic>;
+    final currentDone = data['done'] ?? false;
+    int currentStreak = data['streak'] ?? 0;
+
+    if (!currentDone) {
+      // Mark as done — update streak
+      final lastCompleted = data['lastCompleted'] as String?;
+
+      if (lastCompleted == null) {
+        currentStreak = 1;
+      } else {
+        try {
+          final last = DateTime.parse(lastCompleted);
+          final difference = now.difference(last).inDays;
+          if (difference == 1) {
+            currentStreak += 1;
+          } else if (difference == 0) {
+            // Same day — keep current streak or set to 1
+            if (currentStreak == 0) currentStreak = 1;
+          } else {
+            currentStreak = 1;
+          }
+        } catch (e) {
+          currentStreak = 1;
+        }
+      }
+
+      await docRef.update({
+        'done': true,
+        'streak': currentStreak,
+        'lastCompleted': today,
+      });
+    } else {
+      // Unmark as done
+      if (currentStreak > 0) currentStreak -= 1;
+      await docRef.update({
+        'done': false,
+        'streak': currentStreak,
+      });
+    }
+  } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating habit: $e')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
