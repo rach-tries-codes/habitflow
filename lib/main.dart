@@ -7,6 +7,7 @@ import 'features/home_screen.dart';
 import 'features/journal_screen.dart';
 import 'features/login_screen.dart';
 import 'features/profile_screen.dart';
+import 'features/stats_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,7 +64,7 @@ class _MainNavState extends State<MainNav> {
   final List<Widget> _screens = const [
     HomeScreen(),
     JournalScreen(),
-    Scaffold(body: Center(child: Text('Stats 📊'))),
+    const StatsScreen(),
     const ProfileScreen(),
   ];
 
