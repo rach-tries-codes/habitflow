@@ -3,6 +3,9 @@
         android:label="habitflow"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <meta-data
+        android:name="com.google.android.gms.ads.APPLICATION_ID"
+        android:value="ca-app-pub-6766665772845085~6798571232"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"

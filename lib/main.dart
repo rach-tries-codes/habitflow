@@ -9,6 +9,7 @@ import 'features/login_screen.dart';
 import 'features/profile_screen.dart';
 import 'features/stats_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'services/ad_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +17,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await AdService.initialize();
   runApp(const HabitFlowApp());
 }
 

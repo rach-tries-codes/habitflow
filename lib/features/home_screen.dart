@@ -5,6 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/gemini_service.dart';
 import '../services/auth_service.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import '../services/ad_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,13 +19,31 @@ class _HomeScreenState extends State<HomeScreen> {
   String _weeklyInsight = 'Loading your weekly insight...';
   final GeminiService _geminiService = GeminiService();
 
+  BannerAd? _bannerAd;
+  bool _isBannerLoaded = false;
+
   @override
   void initState() {
     super.initState();
     _loadWeeklyInsight();
     _resetHabitsIfNewDay();
+    _loadBannerAd();
   }
 
+  Future<void> _loadBannerAd() async {
+    final ad = await AdService.loadBannerAd();
+    if (ad != null) {
+      setState(() {
+        _bannerAd = ad;
+        _isBannerLoaded = true;
+      });
+    }
+  }
+  @override
+  void dispose() {
+    AdService.disposeBannerAd();
+    super.dispose();
+  }
   Future<void> _resetHabitsIfNewDay() async {
     final authService = AuthService();
     await authService.resetHabitsIfNewDay();
@@ -58,6 +78,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
+      bottomSheet: _isBannerLoaded && _bannerAd != null
+          ? SizedBox(
+              height: _bannerAd!.size.height.toDouble(),
+              width: double.infinity,
+              child: AdWidget(ad: _bannerAd!),
+            )
+          : null,
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
