@@ -488,86 +488,138 @@ class _HabitItem extends StatelessWidget {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF1E301E).withOpacity(0.65)
-            : Colors.white.withOpacity(0.60),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark
-              ? const Color(0xFF3A6040).withOpacity(0.18)
-              : const Color(0xFFAACC90).withOpacity(0.25),
+  Future<void> _showDeleteDialog(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF1E301E)
+            : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
         ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF3A5830).withOpacity(0.5)
-                  : const Color(0xFF98C88C).withOpacity(0.2),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Center(
-              child: Text(emoji, style: const TextStyle(fontSize: 16)),
+        title: Text(
+          'Delete habit?',
+          style: TextStyle(
+            color: isDark ? AppTheme.darkText : AppTheme.textDark,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to delete "$name"? This cannot be undone.',
+          style: TextStyle(
+            color: isDark ? AppTheme.darkTextMid : AppTheme.textMid,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: AppTheme.sage),
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: isDark ? AppTheme.darkText : AppTheme.textDark,
-                    decoration: done ? TextDecoration.lineThrough : null,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  streak,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isDark ? AppTheme.darkTextMid : AppTheme.textLight,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: () => _toggleDone(context),
-            child: Container(
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: done ? AppTheme.sage : Colors.transparent,
-                border: done
-                    ? null
-                    : Border.all(
-                        color: isDark
-                            ? const Color(0xFF3A6040)
-                            : AppTheme.sageLight,
-                        width: 1.5,
-                      ),
-              ),
-              child: done
-                  ? const Icon(Icons.check, color: Colors.white, size: 14)
-                  : null,
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.red),
             ),
           ),
         ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await FirebaseFirestore.instance
+          .collection('habits')
+          .doc(docId)
+          .delete();
+    }
+  }
+  @override
+  Widget build(BuildContext context) {
+
+    return GestureDetector(
+      onLongPress: () => _showDeleteDialog(context),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark
+              ? const Color(0xFF1E301E).withOpacity(0.65)
+              : Colors.white.withOpacity(0.60),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark
+                ? const Color(0xFF3A6040).withOpacity(0.18)
+                : const Color(0xFFAACC90).withOpacity(0.25),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF3A5830).withOpacity(0.5)
+                    : const Color(0xFF98C88C).withOpacity(0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(
+                child: Text(emoji, style: const TextStyle(fontSize: 16)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? AppTheme.darkText : AppTheme.textDark,
+                      decoration: done ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    streak,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? AppTheme.darkTextMid : AppTheme.textLight,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            GestureDetector(
+              onTap: () => _toggleDone(context),
+              child: Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: done ? AppTheme.sage : Colors.transparent,
+                  border: done
+                      ? null
+                      : Border.all(
+                          color: isDark
+                              ? const Color(0xFF3A6040)
+                              : AppTheme.sageLight,
+                          width: 1.5,
+                        ),
+                ),
+                child: done
+                    ? const Icon(Icons.check, color: Colors.white, size: 14)
+                    : null,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
