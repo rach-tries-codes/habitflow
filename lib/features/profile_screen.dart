@@ -367,13 +367,14 @@ class _LegalLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: () async {
         final uri = Uri.parse(url);
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
         }
       },
+      borderRadius: BorderRadius.circular(8),
       child: Row(
         children: [
           Text(icon, style: const TextStyle(fontSize: 18)),

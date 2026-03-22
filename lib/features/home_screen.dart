@@ -623,8 +623,9 @@ class _HabitItem extends StatelessWidget {
                 ],
               ),
             ),
-            GestureDetector(
+            InkWell(
               onTap: () => _toggleDone(context),
+              borderRadius: BorderRadius.circular(13),
               child: Container(
                 width: 26,
                 height: 26,

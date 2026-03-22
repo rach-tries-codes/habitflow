@@ -131,9 +131,10 @@ class _JournalScreenState extends State<JournalScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: _moods.map((mood) {
                       final isSelected = mood['emoji'] == editMood;
-                      return GestureDetector(
+                      return InkWell(
                         onTap: () =>
                             setDialogState(() => editMood = mood['emoji']!),
+                        borderRadius: BorderRadius.circular(10),
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
@@ -284,9 +285,10 @@ class _JournalScreenState extends State<JournalScreen> {
                     children: _moods.map((mood) {
                       final isSelected = mood['emoji'] == _selectedMood;
                       return Expanded(
-                        child: GestureDetector(
+                        child: InkWell(
                           onTap: () => setState(
                               () => _selectedMood = mood['emoji']!),
+                          borderRadius: BorderRadius.circular(14),
                           child: Container(
                             margin: const EdgeInsets.only(right: 6),
                             padding: const EdgeInsets.symmetric(vertical: 10),
@@ -623,8 +625,9 @@ class _EntryCard extends StatelessWidget {
               ),
               const Spacer(),
               // Edit button
-              GestureDetector(
+              InkWell(
                 onTap: onEdit,
+                borderRadius: BorderRadius.circular(8),
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -644,8 +647,9 @@ class _EntryCard extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               // Delete button
-              GestureDetector(
+              InkWell(
                 onTap: () => _confirmDelete(context),
+                borderRadius: BorderRadius.circular(8),
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
