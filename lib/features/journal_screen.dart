@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../core/theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../core/theme.dart';
 import '../services/gemini_service.dart';
 
 class JournalScreen extends StatefulWidget {
@@ -24,10 +24,16 @@ class _JournalScreenState extends State<JournalScreen> {
     {'emoji': '😊', 'label': 'Good'},
     {'emoji': '🤩', 'label': 'Great'},
   ];
+
   @override
   void initState() {
     super.initState();
     _loadAiPrompt();
+  }
+
+  String get _todayKey {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
   }
 
   Future<void> _loadAiPrompt() async {
@@ -50,11 +56,6 @@ class _JournalScreenState extends State<JournalScreen> {
     setState(() => _aiPrompt = prompt);
   }
 
-  String get _todayKey {
-    final now = DateTime.now();
-    return '${now.year}-${now.month}-${now.day}';
-  }
-  
   Future<void> _saveEntry() async {
     if (_entryController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -76,15 +77,17 @@ class _JournalScreenState extends State<JournalScreen> {
         'date': _todayKey,
         'userId': user?.uid,
         'createdAt': FieldValue.serverTimestamp(),
-      });
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Journal entry saved! 🌿'),
+            content: const Text('Journal saved! 🌿'),
             backgroundColor: AppTheme.sage,
           ),
         );
+        _entryController.clear();
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -95,9 +98,130 @@ class _JournalScreenState extends State<JournalScreen> {
     setState(() => _isSaving = false);
   }
 
+  Future<void> _showEditDialog(
+      BuildContext context, String docId, String currentEntry, String currentMood) async {
+    final editController = TextEditingController(text: currentEntry);
+    String editMood = currentMood;
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          return AlertDialog(
+            backgroundColor:
+                isDark ? const Color(0xFF1E301E) : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Text(
+              'Edit Entry',
+              style: TextStyle(
+                color: isDark ? AppTheme.darkText : AppTheme.moss,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Mood selector in dialog
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: _moods.map((mood) {
+                      final isSelected = mood['emoji'] == editMood;
+                      return GestureDetector(
+                        onTap: () =>
+                            setDialogState(() => editMood = mood['emoji']!),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppTheme.sage.withOpacity(0.2)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppTheme.sage
+                                  : Colors.transparent,
+                            ),
+                          ),
+                          child: Text(mood['emoji']!,
+                              style: const TextStyle(fontSize: 24)),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 12),
+                  // Edit text field
+                  TextField(
+                    controller: editController,
+                    maxLines: 6,
+                    style: TextStyle(
+                      color: isDark ? AppTheme.darkText : AppTheme.textDark,
+                      fontSize: 14,
+                      height: 1.6,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Edit your entry...',
+                      hintStyle: TextStyle(
+                        color: isDark
+                            ? AppTheme.darkTextMid
+                            : AppTheme.textLight,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: AppTheme.sage.withOpacity(0.3),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppTheme.sage),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Cancel',
+                    style: TextStyle(color: AppTheme.textLight)),
+              ),
+              TextButton(
+                onPressed: () async {
+                  await FirebaseFirestore.instance
+                      .collection('journal')
+                      .doc(docId)
+                      .update({
+                    'entry': editController.text.trim(),
+                    'mood': editMood,
+                    'updatedAt': FieldValue.serverTimestamp(),
+                  });
+                  if (context.mounted) Navigator.pop(context);
+                },
+                child: Text('Save',
+                    style: TextStyle(
+                        color: AppTheme.sage, fontWeight: FontWeight.w600)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _deleteEntry(String docId) async {
+    await FirebaseFirestore.instance.collection('journal').doc(docId).delete();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
       body: Stack(
@@ -161,8 +285,8 @@ class _JournalScreenState extends State<JournalScreen> {
                       final isSelected = mood['emoji'] == _selectedMood;
                       return Expanded(
                         child: GestureDetector(
-                          onTap: () =>
-                              setState(() => _selectedMood = mood['emoji']!),
+                          onTap: () => setState(
+                              () => _selectedMood = mood['emoji']!),
                           child: Container(
                             margin: const EdgeInsets.only(right: 6),
                             padding: const EdgeInsets.symmetric(vertical: 10),
@@ -206,8 +330,7 @@ class _JournalScreenState extends State<JournalScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Journal entry
-                  // AI Prompt card
+                  // AI Prompt
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
@@ -240,7 +363,9 @@ class _JournalScreenState extends State<JournalScreen> {
                                 _aiPrompt,
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: isDark ? AppTheme.darkText : AppTheme.textDark,
+                                  color: isDark
+                                      ? AppTheme.darkText
+                                      : AppTheme.textDark,
                                   height: 1.5,
                                 ),
                               ),
@@ -251,7 +376,9 @@ class _JournalScreenState extends State<JournalScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _SectionLabel("Today's Entry", isDark: isDark),
+
+                  // New entry text field
+                  _SectionLabel("Write Today's Entry", isDark: isDark),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.all(14),
@@ -268,9 +395,10 @@ class _JournalScreenState extends State<JournalScreen> {
                     ),
                     child: TextField(
                       controller: _entryController,
-                      maxLines: 6,
+                      maxLines: 5,
                       style: TextStyle(
-                        color: isDark ? AppTheme.darkText : AppTheme.textDark,
+                        color:
+                            isDark ? AppTheme.darkText : AppTheme.textDark,
                         fontSize: 14,
                         height: 1.6,
                       ),
@@ -285,93 +413,6 @@ class _JournalScreenState extends State<JournalScreen> {
                         border: InputBorder.none,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Past entries
-                  _SectionLabel('Past Entries', isDark: isDark),
-                  const SizedBox(height: 8),
-                  StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                    .collection('journal')
-                    .where('userId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
-                    .orderBy('createdAt', descending: true)
-                    .limit(5)
-                    .snapshots(),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData ||
-                          snapshot.data!.docs.isEmpty) {
-                        return Center(
-                          child: Text(
-                            'No past entries yet 🌱',
-                            style: TextStyle(
-                              color: isDark
-                                  ? AppTheme.darkTextMid
-                                  : AppTheme.textLight,
-                            ),
-                          ),
-                        );
-                      }
-                      return Column(
-                        children: snapshot.data!.docs.map((doc) {
-                          final data = doc.data() as Map<String, dynamic>;
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF1E301E).withOpacity(0.65)
-                                  : Colors.white.withOpacity(0.65),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: isDark
-                                    ? const Color(0xFF3A6040).withOpacity(0.25)
-                                    : AppTheme.sageLight.withOpacity(0.3),
-                              ),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  data['mood'] ?? '😊',
-                                  style: const TextStyle(fontSize: 24),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        data['date'] ?? '',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: isDark
-                                              ? AppTheme.darkTextMid
-                                              : AppTheme.textLight,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        data['entry'] ?? '',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: isDark
-                                              ? AppTheme.darkText
-                                              : AppTheme.textDark,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      );
-                    },
                   ),
                   const SizedBox(height: 16),
 
@@ -390,15 +431,138 @@ class _JournalScreenState extends State<JournalScreen> {
                         elevation: 0,
                       ),
                       child: _isSaving
-                          ? const CircularProgressIndicator(color: Colors.white)
+                          ? const CircularProgressIndicator(
+                              color: Colors.white)
                           : const Text(
-                              'Save Entry 🌿',
+                              'Save Journal 🌿',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                     ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Today's entry
+                  _SectionLabel("Today's Entry", isDark: isDark),
+                  const SizedBox(height: 8),
+                  StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('journal')
+                        .doc('${user?.uid}_$_todayKey')
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData || !snapshot.data!.exists) {
+                        return Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF1E301E).withOpacity(0.65)
+                                : Colors.white.withOpacity(0.65),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isDark
+                                  ? const Color(0xFF3A6040).withOpacity(0.25)
+                                  : AppTheme.sageLight.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'No entry yet today 🌱',
+                              style: TextStyle(
+                                color: isDark
+                                    ? AppTheme.darkTextMid
+                                    : AppTheme.textLight,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+
+                      final data =
+                          snapshot.data!.data() as Map<String, dynamic>;
+                      return _EntryCard(
+                        docId: snapshot.data!.id,
+                        entry: data['entry'] ?? '',
+                        mood: data['mood'] ?? '😊',
+                        date: 'Today',
+                        isDark: isDark,
+                        onEdit: () => _showEditDialog(
+                          context,
+                          snapshot.data!.id,
+                          data['entry'] ?? '',
+                          data['mood'] ?? '😊',
+                        ),
+                        onDelete: () => _deleteEntry(snapshot.data!.id),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Previous entries
+                  _SectionLabel('Previous Entries', isDark: isDark),
+                  const SizedBox(height: 8),
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('journal')
+                        .where('userId', isEqualTo: user?.uid)
+                        .orderBy('createdAt', descending: true)
+                        .limit(10)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return Center(
+                          child: Text(
+                            'No past entries yet 🌱',
+                            style: TextStyle(
+                              color: isDark
+                                  ? AppTheme.darkTextMid
+                                  : AppTheme.textLight,
+                            ),
+                          ),
+                        );
+                      }
+
+                      // Filter out today's entry
+                      final pastDocs = snapshot.data!.docs.where((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        return data['date'] != _todayKey;
+                      }).toList();
+
+                      if (pastDocs.isEmpty) {
+                        return Center(
+                          child: Text(
+                            'No past entries yet 🌱',
+                            style: TextStyle(
+                              color: isDark
+                                  ? AppTheme.darkTextMid
+                                  : AppTheme.textLight,
+                            ),
+                          ),
+                        );
+                      }
+
+                      return Column(
+                        children: pastDocs.map((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          return _EntryCard(
+                            docId: doc.id,
+                            entry: data['entry'] ?? '',
+                            mood: data['mood'] ?? '😊',
+                            date: data['date'] ?? '',
+                            isDark: isDark,
+                            onEdit: () => _showEditDialog(
+                              context,
+                              doc.id,
+                              data['entry'] ?? '',
+                              data['mood'] ?? '😊',
+                            ),
+                            onDelete: () => _deleteEntry(doc.id),
+                          );
+                        }).toList(),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -407,6 +571,153 @@ class _JournalScreenState extends State<JournalScreen> {
         ],
       ),
     );
+  }
+}
+
+// Entry card widget
+class _EntryCard extends StatelessWidget {
+  final String docId, entry, mood, date;
+  final bool isDark;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _EntryCard({
+    required this.docId,
+    required this.entry,
+    required this.mood,
+    required this.date,
+    required this.isDark,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF1E301E).withOpacity(0.65)
+            : Colors.white.withOpacity(0.65),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark
+              ? const Color(0xFF3A6040).withOpacity(0.25)
+              : AppTheme.sageLight.withOpacity(0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(mood, style: const TextStyle(fontSize: 20)),
+              const SizedBox(width: 8),
+              Text(
+                date,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? AppTheme.darkTextMid : AppTheme.textLight,
+                ),
+              ),
+              const Spacer(),
+              // Edit button
+              GestureDetector(
+                onTap: onEdit,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.sage.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Edit',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.sage,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              // Delete button
+              GestureDetector(
+                onTap: () => _confirmDelete(context),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'Delete',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.red,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            entry,
+            style: TextStyle(
+              fontSize: 13,
+              color: isDark ? AppTheme.darkText : AppTheme.textDark,
+              height: 1.6,
+            ),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1E301E) : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Text(
+          'Delete entry?',
+          style: TextStyle(
+            color: isDark ? AppTheme.darkText : AppTheme.textDark,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Text(
+          'This cannot be undone.',
+          style: TextStyle(
+            color: isDark ? AppTheme.darkTextMid : AppTheme.textMid,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel',
+                style: TextStyle(color: AppTheme.textLight)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete',
+                style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) onDelete();
   }
 }
 
