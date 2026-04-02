@@ -240,6 +240,7 @@ class _JournalScreenState extends State<JournalScreen> {
                 children: [
                   // Header
                   Container(
+                    width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: isDark
@@ -333,6 +334,7 @@ class _JournalScreenState extends State<JournalScreen> {
                   const SizedBox(height: 16),
 
                   // AI Prompt
+                  /*
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
@@ -377,7 +379,8 @@ class _JournalScreenState extends State<JournalScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  */
+                  //const SizedBox(height: 16),
 
                   // New entry text field
                   _SectionLabel("Write Today's Entry", isDark: isDark),

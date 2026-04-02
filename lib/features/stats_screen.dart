@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../core/theme.dart';
+import '../services/gemini_service.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -17,6 +19,12 @@ class _StatsScreenState extends State<StatsScreen> {
   int _longestStreak = 0;
   Map<String, int> _moodCounts = {};
   bool _isLoading = true;
+
+  List<Map<String, dynamic>> _habitData = [];
+  String _aiAnalysis = '';
+  bool _isLoadingAI = false;
+  bool _hasLoadedAI = false;
+  final GeminiService _geminiService = GeminiService();
 
   @override
   void initState() {
@@ -64,8 +72,34 @@ class _StatsScreenState extends State<StatsScreen> {
       _longestStreak = longestStreak;
       _totalJournalEntries = journalSnapshot.docs.length;
       _moodCounts = moodCounts;
+      _habitData = habitsSnapshot.docs.map((doc) {
+        final data = doc.data();
+        return <String, dynamic>{
+          'name': data['name'] ?? '',
+          'emoji': data['emoji'] ?? '🌱',
+          'streak': data['streak'] ?? 0,
+          'done': data['done'] ?? false,
+          'lastCompleted': data['lastCompleted'] ?? '',
+        };
+      }).toList()
+        ..sort((a, b) =>
+            (b['streak'] as int).compareTo(a['streak'] as int));                                        
       _isLoading = false;
     });
+  }
+
+  Future<void> _loadAIAnalysis() async {
+    if (_isLoadingAI || _hasLoadedAI) return;
+    setState(() => _isLoadingAI = true);
+    final analysis =
+        await _geminiService.generateHabitAnalysis(habits: _habitData);
+    if (mounted) {
+      setState(() {
+        _aiAnalysis = analysis;
+        _isLoadingAI = false;
+        _hasLoadedAI = true;
+      });
+    }
   }
 
   @override
@@ -90,6 +124,7 @@ class _StatsScreenState extends State<StatsScreen> {
                       children: [
                         // Header
                         Container(
+                          width: double.infinity,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: isDark
@@ -298,6 +333,342 @@ class _StatsScreenState extends State<StatsScreen> {
                             ),
                           ),
                         ],
+                        const SizedBox(height: 16),
+
+                        // Habit completion chart - last 7 days
+                        _SectionLabel(label: 'Last 7 Days', isDark: isDark),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF1E301E).withOpacity(0.65)
+                                : Colors.white.withOpacity(0.65),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isDark
+                                  ? const Color(0xFF3A6040).withOpacity(0.25)
+                                  : AppTheme.sageLight.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Habits completed per day',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark ? AppTheme.darkText : AppTheme.textDark,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                height: 160,
+                                child: BarChart(
+                                  BarChartData(
+                                    alignment: BarChartAlignment.spaceAround,
+                                    maxY: (_totalHabits > 0 ? _totalHabits : 5).toDouble(),
+                                    barTouchData: BarTouchData(enabled: false),
+                                    titlesData: FlTitlesData(
+                                      leftTitles: AxisTitles(
+                                        sideTitles: SideTitles(
+                                          showTitles: true,
+                                          reservedSize: 24,
+                                          getTitlesWidget: (value, meta) => Text(
+                                            '${value.toInt()}',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: isDark
+                                                  ? AppTheme.darkTextMid
+                                                  : AppTheme.textLight,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      bottomTitles: AxisTitles(
+                                        sideTitles: SideTitles(
+                                          showTitles: true,
+                                          getTitlesWidget: (value, meta) {
+                                            final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                                            final now = DateTime.now();
+                                            final date = now.subtract(
+                                                Duration(days: 6 - value.toInt()));
+                                            return Padding(
+                                              padding: const EdgeInsets.only(top: 4),
+                                              child: Text(
+                                                days[date.weekday - 1],
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  color: isDark
+                                                      ? AppTheme.darkTextMid
+                                                      : AppTheme.textLight,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      rightTitles: const AxisTitles(
+                                          sideTitles: SideTitles(showTitles: false)),
+                                      topTitles: const AxisTitles(
+                                          sideTitles: SideTitles(showTitles: false)),
+                                    ),
+                                    gridData: FlGridData(
+                                      show: true,
+                                      drawVerticalLine: false,
+                                      getDrawingHorizontalLine: (value) => FlLine(
+                                        color: isDark
+                                            ? const Color(0xFF3A6040).withOpacity(0.2)
+                                            : AppTheme.mint.withOpacity(0.4),
+                                        strokeWidth: 1,
+                                      ),
+                                    ),
+                                    borderData: FlBorderData(show: false),
+                                    barGroups: List.generate(7, (index) {
+                                      final now = DateTime.now();
+                                      final date =
+                                          now.subtract(Duration(days: 6 - index));
+                                      final dateKey =
+                                          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+                                      // Count habits completed on this day
+                                      final count = _habitData
+                                          .where((h) => h['lastCompleted'] == dateKey)
+                                          .length;
+                                      return BarChartGroupData(
+                                        x: index,
+                                        barRods: [
+                                          BarChartRodData(
+                                            toY: count.toDouble(),
+                                            color: AppTheme.sage,
+                                            width: 18,
+                                            borderRadius: const BorderRadius.vertical(
+                                              top: Radius.circular(6),
+                                            ),
+                                            backDrawRodData: BackgroundBarChartRodData(
+                                              show: true,
+                                              toY: (_totalHabits > 0
+                                                      ? _totalHabits
+                                                      : 5)
+                                                  .toDouble(),
+                                              color: isDark
+                                                  ? const Color(0xFF3A6040).withOpacity(0.15)
+                                                  : AppTheme.mint.withOpacity(0.2),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    }),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Mood chart
+                        if (_moodCounts.isNotEmpty) ...[
+                          _SectionLabel(label: 'Mood Overview', isDark: isDark),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF1E301E).withOpacity(0.65)
+                                  : Colors.white.withOpacity(0.65),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isDark
+                                    ? const Color(0xFF3A6040).withOpacity(0.25)
+                                    : AppTheme.sageLight.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Mood distribution',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: isDark ? AppTheme.darkText : AppTheme.textDark,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                SizedBox(
+                                  height: 180,
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: PieChart(
+                                          PieChartData(
+                                            sectionsSpace: 3,
+                                            centerSpaceRadius: 36,
+                                            sections: _buildMoodPieSections(),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: _moodCounts.entries.map((entry) {
+                                          final total = _moodCounts.values
+                                              .fold(0, (a, b) => a + b);
+                                          final pct =
+                                              ((entry.value / total) * 100).round();
+                                          return Padding(
+                                            padding: const EdgeInsets.only(bottom: 8),
+                                            child: Row(
+                                              children: [
+                                                Text(
+                                                  entry.key,
+                                                  style:
+                                                      const TextStyle(fontSize: 16)),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  '$pct%',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: isDark
+                                                        ? AppTheme.darkTextMid
+                                                        : AppTheme.textLight,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+
+
+
+
+
+                        // Habit Streaks section
+                        _SectionLabel(label: 'Habit Streaks', isDark: isDark),
+                        const SizedBox(height: 8),
+                        if (_habitData.isEmpty)
+                          Center(
+                            child: Text(
+                              'No habits yet 🌱',
+                              style: TextStyle(
+                                color: isDark ? AppTheme.darkTextMid : AppTheme.textLight,
+                              ),
+                            ),
+                          )
+                        else
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF1E301E).withOpacity(0.65)
+                                  : Colors.white.withOpacity(0.65),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isDark
+                                    ? const Color(0xFF3A6040).withOpacity(0.25)
+                                    : AppTheme.sageLight.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Column(
+                              children: _habitData.map((habit) {
+                                return _HabitStreakBar(
+                                  emoji: habit['emoji'] as String,
+                                  name: habit['name'] as String,
+                                  streak: habit['streak'] as int,
+                                  done: habit['done'] as bool,
+                                  maxStreak: _longestStreak > 0 ? _longestStreak : 1,
+                                  isDark: isDark,
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        const SizedBox(height: 16),
+
+                        // AI Habit Coach section
+                        /*
+                        _SectionLabel(label: 'AI Habit Coach ✨', isDark: isDark),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppTheme.sage.withOpacity(0.13),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppTheme.sage.withOpacity(0.25),
+                            ),
+                          ),
+                          child: _hasLoadedAI
+                              ? Text(
+                                  _aiAnalysis,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: isDark ? AppTheme.darkText : AppTheme.textDark,
+                                    height: 1.6,
+                                  ),
+                                )
+                              : _isLoadingAI
+                                  ? const Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.all(8.0),
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    )
+                                  : InkWell(
+                                      onTap: _loadAIAnalysis,
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Row(
+                                        children: [
+                                          const Text('✨', style: TextStyle(fontSize: 20)),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Get your AI habit analysis',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: isDark
+                                                        ? AppTheme.darkText
+                                                        : AppTheme.moss,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  'Tap to get personalised insights on your habits',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: isDark
+                                                        ? AppTheme.darkTextMid
+                                                        : AppTheme.textMid,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Icon(
+                                            Icons.arrow_forward_ios,
+                                            size: 14,
+                                            color: isDark
+                                                ? AppTheme.darkTextMid
+                                                : AppTheme.textLight,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                        ),
+                        */
                       ],
                     ),
                   ),
@@ -305,6 +676,32 @@ class _StatsScreenState extends State<StatsScreen> {
         ],
       ),
     );
+  }
+  List<PieChartSectionData> _buildMoodPieSections() {
+    final total = _moodCounts.values.fold(0, (a, b) => a + b);
+    final colors = [
+      AppTheme.sage,
+      AppTheme.sageLight,
+      const Color(0xFF4A6741),
+      const Color(0xFFC8E6C9),
+    ];
+
+    return _moodCounts.entries.toList().asMap().entries.map((entry) {
+      final index = entry.key;
+      final mood = entry.value;
+      final pct = mood.value / total * 100;
+      return PieChartSectionData(
+        value: mood.value.toDouble(),
+        title: '${pct.round()}%',
+        radius: 50,
+        color: colors[index % colors.length],
+        titleStyle: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+        ),
+      );
+    }).toList();
   }
 }
 
@@ -428,4 +825,73 @@ class _StatsBgPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_StatsBgPainter old) => old.isDark != isDark;
+
+  
+}
+
+class _HabitStreakBar extends StatelessWidget {
+  final String emoji, name;
+  final int streak, maxStreak;
+  final bool done, isDark;
+
+  const _HabitStreakBar({
+    required this.emoji,
+    required this.name,
+    required this.streak,
+    required this.maxStreak,
+    required this.done,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final percentage = maxStreak > 0 ? streak / maxStreak : 0.0;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 16)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? AppTheme.darkText : AppTheme.textDark,
+                    decoration: done ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+              ),
+              Text(
+                '🔥 $streak days',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isDark ? AppTheme.darkTextMid : AppTheme.textLight,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: percentage.toDouble(),
+              backgroundColor: isDark
+                  ? const Color(0xFF3A6040).withOpacity(0.3)
+                  : AppTheme.mint.withOpacity(0.4),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                done ? AppTheme.sage : AppTheme.sageLight,
+              ),
+              minHeight: 8,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

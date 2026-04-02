@@ -82,4 +82,46 @@ class AuthService {
 
     await batch.commit();
   }
+  // Email sign up
+  Future<UserCredential?> signUpWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      // Send verification email
+      await credential.user?.sendEmailVerification();
+      return credential;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Email sign in
+  Future<UserCredential?> signInWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      return credential;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Reset password
+  Future<void> resetPassword(String email) async {
+    await _auth.sendPasswordResetEmail(email: email);
+  }
+
+  // Check if email is verified
+  bool get isEmailVerified => _auth.currentUser?.emailVerified ?? false;
+
 }

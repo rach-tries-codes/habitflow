@@ -8,6 +8,33 @@ import '../services/auth_service.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../services/ad_service.dart';
 
+String _getGreeting() {
+  final hour = DateTime.now().hour;
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+String _formatDate() {
+  final now = DateTime.now();
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return '🗓 ${days[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}';
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -77,6 +104,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final user = FirebaseAuth.instance.currentUser;
+    final firstName = user?.displayName?.split(' ').first ?? 'there';
     return Scaffold(
       bottomSheet: _isBannerLoaded && _bannerAd != null
           ? SizedBox(
@@ -103,76 +132,106 @@ class _HomeScreenState extends State<HomeScreen> {
           _NatureBackground(isDark: isDark),
           // Main content
           SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 12),
-                  _GreetingCard(isDark: isDark),
-                  const SizedBox(height: 12),
-                  _StreakRow(isDark: isDark),
-                  const SizedBox(height: 16),
-                  // Weekly AI Insight card
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppTheme.sage.withOpacity(0.13),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppTheme.sage.withOpacity(0.25),
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('habits')
+                  .where('userId', isEqualTo: user?.uid)
+                  .orderBy('createdAt', descending: false)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                final docs = snapshot.data?.docs ?? [];
+                final totalCount = docs.length;
+                final completedCount = docs
+                    .where((doc) =>
+                        (doc.data() as Map<String, dynamic>)['done'] == true)
+                    .length;
+                final incompleteCount = totalCount - completedCount;
+                final longestStreak = docs.fold<int>(0, (max, doc) {
+                  final streak =
+                      (doc.data() as Map<String, dynamic>)['streak'] as int? ??
+                          0;
+                  return streak > max ? streak : max;
+                });
+                final completionPct = totalCount > 0
+                    ? ((completedCount / totalCount) * 100).round()
+                    : 0;
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 12),
+                      _GreetingCard(
+                        isDark: isDark,
+                        userName: firstName,
+                        incompleteCount: incompleteCount,
+                        totalCount: totalCount,
+                        dateLabel: _formatDate(),
                       ),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('✨', style: TextStyle(fontSize: 20)),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'WEEKLY INSIGHT · AI',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.9,
-                                  color: AppTheme.sage,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _weeklyInsight,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: isDark ? AppTheme.darkText : AppTheme.textDark,
-                                  height: 1.5,
-                                ),
-                              ),
-                            ],
+                      const SizedBox(height: 12),
+                      _StreakRow(
+                        isDark: isDark,
+                        longestStreak: longestStreak,
+                        completedCount: completedCount,
+                        totalCount: totalCount,
+                        completionPct: completionPct,
+                      ),
+                      const SizedBox(height: 16),
+                      // Weekly AI Insight card
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppTheme.sage.withOpacity(0.13),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppTheme.sage.withOpacity(0.25),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  _SectionLabel(label: "Today's Habits", isDark: isDark),
-                  const SizedBox(height: 8),
-                  StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                      .collection('habits')
-                      .where('userId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
-                      .orderBy('createdAt', descending: false)
-                      .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(),
-                        );
-                      }
-                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return Center(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('✨', style: TextStyle(fontSize: 20)),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'WEEKLY INSIGHT · AI',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.9,
+                                      color: AppTheme.sage,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _weeklyInsight,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: isDark
+                                          ? AppTheme.darkText
+                                          : AppTheme.textDark,
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      _SectionLabel(label: "Today's Habits", isDark: isDark),
+                      const SizedBox(height: 8),
+                      if (snapshot.connectionState == ConnectionState.waiting &&
+                          docs.isEmpty)
+                        const Center(child: CircularProgressIndicator())
+                      else if (docs.isEmpty)
+                        Center(
                           child: Column(
                             children: [
                               const SizedBox(height: 40),
@@ -183,33 +242,37 @@ class _HomeScreenState extends State<HomeScreen> {
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: isDark ? AppTheme.darkTextMid : AppTheme.textLight,
+                                  color: isDark
+                                      ? AppTheme.darkTextMid
+                                      : AppTheme.textLight,
                                 ),
                               ),
                             ],
                           ),
-                        );
-                      }
-                      return Column(
-                        children: snapshot.data!.docs.map((doc) {
-                          final data = doc.data() as Map<String, dynamic>;
-                          final streak = data['streak'] ?? 0;
-                          final streakText = streak > 0 ? '🔥 $streak days' : 'Start your streak!';
+                        )
+                      else
+                        Column(
+                          children: docs.map((doc) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            final streak = data['streak'] ?? 0;
+                            final streakText = streak > 0
+                                ? '🔥 $streak days'
+                                : 'Start your streak!';
 
-                          return _HabitItem(
-                            emoji: data['emoji'] ?? '🌱',
-                            name: data['name'] ?? '',
-                            streak: streakText,
-                            done: data['done'] ?? false,
-                            isDark: isDark,
-                            docId: doc.id,
-                          );
-                        }).toList(),
-                      );
-                    },
+                            return _HabitItem(
+                              emoji: data['emoji'] ?? '🌱',
+                              name: data['name'] ?? '',
+                              streak: streakText,
+                              done: data['done'] ?? false,
+                              isDark: isDark,
+                              docId: doc.id,
+                            );
+                          }).toList(),
+                        ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ],
@@ -294,11 +357,29 @@ class _NaturePainter extends CustomPainter {
 // ── Greeting card ──
 class _GreetingCard extends StatelessWidget {
   final bool isDark;
-  const _GreetingCard({required this.isDark});
+  final String userName;
+  final int incompleteCount;
+  final int totalCount;
+  final String dateLabel;
+
+  const _GreetingCard({
+    required this.isDark,
+    required this.userName,
+    required this.incompleteCount,
+    required this.totalCount,
+    required this.dateLabel,
+  });
+
+  String get _habitSubtitle {
+    if (totalCount == 0) return 'No habits yet — tap + to get started';
+    if (incompleteCount == 0) return 'All habits done for today! 🎉';
+    return '$incompleteCount habit${incompleteCount == 1 ? '' : 's'} to complete today';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark
@@ -315,7 +396,7 @@ class _GreetingCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Good morning,\nRachita 🌿',
+            '${_getGreeting()},$userName 🌿',
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w600,
@@ -325,7 +406,7 @@ class _GreetingCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '3 habits to complete today',
+            _habitSubtitle,
             style: TextStyle(
               fontSize: 13,
               color: isDark ? AppTheme.darkTextMid : AppTheme.textMid,
@@ -341,7 +422,7 @@ class _GreetingCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              '🗓 Friday, Mar 20',
+              dateLabel,
               style: TextStyle(
                 fontSize: 11,
                 color: isDark ? AppTheme.sageLight : AppTheme.moss,
@@ -357,17 +438,43 @@ class _GreetingCard extends StatelessWidget {
 // ── Streak row ──
 class _StreakRow extends StatelessWidget {
   final bool isDark;
-  const _StreakRow({required this.isDark});
+  final int longestStreak;
+  final int completedCount;
+  final int totalCount;
+  final int completionPct;
+
+  const _StreakRow({
+    required this.isDark,
+    required this.longestStreak,
+    required this.completedCount,
+    required this.totalCount,
+    required this.completionPct,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _StreakCard(emoji: '🔥', value: '12', label: 'streak', isDark: isDark),
+        _StreakCard(
+          emoji: '🔥',
+          value: '$longestStreak',
+          label: 'streak',
+          isDark: isDark,
+        ),
         const SizedBox(width: 8),
-        _StreakCard(emoji: '✅', value: '2/3', label: 'today', isDark: isDark),
+        _StreakCard(
+          emoji: '✅',
+          value: '$completedCount/$totalCount',
+          label: 'today',
+          isDark: isDark,
+        ),
         const SizedBox(width: 8),
-        _StreakCard(emoji: '🌱', value: '87%', label: 'week', isDark: isDark),
+        _StreakCard(
+          emoji: '🌱',
+          value: '$completionPct%',
+          label: 'done',
+          isDark: isDark,
+        ),
       ],
     );
   }
@@ -386,6 +493,7 @@ class _StreakCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
+        width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           color: isDark
@@ -624,11 +732,11 @@ class _HabitItem extends StatelessWidget {
               ),
             ),
             InkWell(
-              onTap: () => _toggleDone(context),
-              borderRadius: BorderRadius.circular(13),
-              child: Container(
-                width: 26,
-                height: 26,
+            onTap: () => _toggleDone(context),
+            borderRadius: BorderRadius.circular(13),
+            child: Container(
+              width: 26,
+              height: 26,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: done ? AppTheme.sage : Colors.transparent,

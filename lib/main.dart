@@ -10,6 +10,7 @@ import 'features/profile_screen.dart';
 import 'features/stats_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/ad_service.dart';
+import 'features/calendar_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,8 +69,9 @@ class _MainNavState extends State<MainNav> {
   final List<Widget> _screens = const [
     HomeScreen(),
     JournalScreen(),
-    const StatsScreen(),
-    const ProfileScreen(),
+    StatsScreen(),
+    CalendarScreen(),
+    ProfileScreen(),
   ];
 
   @override
@@ -113,6 +115,9 @@ class _MainNavState extends State<MainNav> {
             BottomNavigationBarItem(
                 icon: Text('📊', style: TextStyle(fontSize: 20)),
                 label: 'Stats'),
+            BottomNavigationBarItem(
+                icon: Text('🗓', style: TextStyle(fontSize: 20)),
+                label: 'Calendar'),
             BottomNavigationBarItem(
                 icon: Text('👤', style: TextStyle(fontSize: 20)),
                 label: 'Profile'),

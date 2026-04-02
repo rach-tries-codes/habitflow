@@ -48,6 +48,41 @@ Only return the insight, nothing else.
     }
   }
 
+  // Generate a full analysis of all the user's habits
+  Future<String> generateHabitAnalysis({
+    required List<Map<String, dynamic>> habits,
+  }) async {
+    try {
+      if (habits.isEmpty) {
+        return 'Add some habits to unlock your personalised analysis! 🌱';
+      }
+
+      final habitLines = habits.map((h) {
+        final streak = h['streak'] ?? 0;
+        final done = h['done'] == true ? 'done today' : 'not done today';
+        return '- ${h['emoji']} ${h['name']}: $streak day streak, $done';
+      }).join('\n');
+
+      final prompt = '''
+You are a supportive habit coach. Here are the user\'s habits:
+$habitLines
+
+In under 80 words, give personalised advice as flowing text (no bullet points):
+1. Briefly celebrate their strongest habit (highest streak)
+2. Give one specific, actionable tip for their weakest habit (lowest streak)
+3. One simple consistency strategy they can start today
+
+Be warm and specific. Only return the advice, nothing else.
+''';
+
+      final content = [Content.text(prompt)];
+      final response = await _model.generateContent(content);
+      return response.text ?? 'Keep building those habits — every day counts! 🌿';
+    } catch (e) {
+      return 'Keep building those habits — every day counts! 🌿';
+    }
+  }
+
   // Generate habit coaching tip
   Future<String> generateHabitTip(String habitName) async {
     try {

@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:1078132301789:android:f4018115c2e055f4cda034",
         "android_client_info": {
-          "package_name": "com.example.habitflow"
+          "package_name": "com.shelbylabs.habitflow"
         }
       },
       "oauth_client": [
@@ -17,7 +17,7 @@
           "client_id": "1078132301789-d74tpbiedmui6hd6jm8vhesu86q7an48.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.example.habitflow",
+            "package_name": "com.shelbylabs.habitflow",
             "certificate_hash": "28d2679fc74fb45179a3abe4e27c8c82d12a8187"
           }
         },
@@ -42,7 +42,7 @@
               "client_id": "1078132301789-3bsebb5gi2laf30csakbtnl12snsqgmb.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.habitflow"
+                "bundle_id": "com.shelbylabs.habitflow"
               }
             }
           ]
